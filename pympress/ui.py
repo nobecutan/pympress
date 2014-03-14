@@ -97,6 +97,9 @@ class UI:
     #: Fullscreen toggle. By default, don't start in fullscreen mode.
     fullscreen = False
 
+    #: Blanked screen toggle.
+    blanked = False
+
     #: Current :class:`~pympress.document.Document` instance.
     doc = None
 
@@ -170,6 +173,7 @@ class UI:
             <menuitem action="Reset timer"/>
             <menuitem action="Fullscreen"/>
             <menuitem action="Notes mode"/>
+            <menuitem action="Blank screen"/>
           </menu>
           <menu action="Help">
             <menuitem action="About"/>
@@ -197,6 +201,7 @@ class UI:
             ("Pause timer",  None,           "_Pause timer", "p",  None, self.switch_pause,      True),
             ("Fullscreen",   None,           "_Fullscreen",  "f",  None, self.switch_fullscreen, False),
             ("Notes mode",   None,           "_Note mode",   "n",  None, self.switch_mode,       self.notes_mode),
+            ("Blank screen", None,           "_Blank screen","b",  None, self.switch_blank,      False),
         ])
         ui_manager.insert_action_group(action_group)
 
@@ -468,17 +473,22 @@ class UI:
         :param event: the event that occured
         :type  event: :class:`gtk.gdk.Event`
         """
+
         if event.type == gtk.gdk.KEY_PRESS:
             name = gtk.gdk.keyval_name(event.keyval)
 
             if name in ["Right", "Down", "Page_Down", "space"]:
-                self.doc.goto_next()
+                if not self.blanked:
+                    self.doc.goto_next()
             elif name in ["Left", "Up", "Page_Up", "BackSpace"]:
-                self.doc.goto_prev()
+                if not self.blanked:
+                    self.doc.goto_prev()
             elif name == 'Home':
-                self.doc.goto_home()
+                if not self.blanked:
+                    self.doc.goto_home()
             elif name == 'End':
-                self.doc.goto_end()
+                if not self.blanked:
+                    self.doc.goto_end()
             elif (name.upper() in ["F", "F11"]) \
                 or (name == "Return" and event.state & gtk.gdk.MOD1_MASK) \
                 or (name.upper() == "L" and event.state & gtk.gdk.CONTROL_MASK):
@@ -498,12 +508,15 @@ class UI:
                     self.switch_pause()
                 elif name.upper() == "N":
                     self.switch_mode()
+                elif name.upper() == "B":
+                    self.switch_blank()
 
         elif event.type == gtk.gdk.SCROLL:
-            if event.direction in [gtk.gdk.SCROLL_RIGHT, gtk.gdk.SCROLL_DOWN]:
-                self.doc.goto_next()
-            else:
-                self.doc.goto_prev()
+            if not self.blanked:
+                if event.direction in [gtk.gdk.SCROLL_RIGHT, gtk.gdk.SCROLL_DOWN]:
+                    self.doc.goto_next()
+                else:
+                    self.doc.goto_prev()
 
         else:
             print "Unknown event %s" % event.type
@@ -798,6 +811,14 @@ class UI:
             self.cache.set_widget_type("p_da_next", PDF_CONTENT_PAGE)
 
         self.on_page_change(False)
+
+    def switch_blank(self, widget=None, event=None):
+        if self.blanked:
+            self.blanked = False
+            self.c_da.show()
+        else:
+            self.blanked = True
+            self.c_da.hide()
 
 
 ##
