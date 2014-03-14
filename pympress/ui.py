@@ -489,7 +489,7 @@ class UI:
             elif name == 'End':
                 if not self.blanked:
                     self.doc.goto_end()
-            elif (name.upper() in ["F", "F11"]) \
+            elif (name.upper() == "F11") \
                 or (name == "Return" and event.state & gtk.gdk.MOD1_MASK) \
                 or (name.upper() == "L" and event.state & gtk.gdk.CONTROL_MASK):
                 self.switch_fullscreen()
@@ -506,6 +506,8 @@ class UI:
             elif widget is self.c_win:
                 if name.upper() == "P":
                     self.switch_pause()
+                elif name.upper() == "F":
+                    self.switch_fullscreen()
                 elif name.upper() == "N":
                     self.switch_mode()
                 elif name.upper() == "B":
