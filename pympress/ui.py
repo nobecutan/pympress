@@ -65,7 +65,7 @@ class UI:
     c_da = gtk.DrawingArea()
 
     #: :class:`~gtk.AspectFrame` for the current slide in the Presenter window.
-    p_frame_cur = gtk.AspectFrame(yalign=1, ratio=4./3., obey_child=False)
+    p_frame_cur = gtk.AspectFrame(xalign=0, yalign=0, ratio=4./3., obey_child=False)
     #: :class:`~gtk.DrawingArea` for the current slide in the Presenter window.
     p_da_cur = gtk.DrawingArea()
     #: Slide counter :class:`~gtk.Label` for the current slide.
@@ -76,7 +76,7 @@ class UI:
     entry_cur = gtk.Entry()
 
     #: :class:`~gtk.AspectFrame` for the next slide in the Presenter window.
-    p_frame_next = gtk.AspectFrame(yalign=1, ratio=4./3., obey_child=False)
+    p_frame_next = gtk.AspectFrame(xalign=1, yalign=1, ratio=4./3., obey_child=False)
     #: :class:`~gtk.DrawingArea` for the next slide in the Presenter window.
     p_da_next = gtk.DrawingArea()
     #: Slide counter :class:`~gtk.Label` for the next slide.
@@ -112,6 +112,8 @@ class UI:
         :type  doc: :class:`pympress.document.Document`
         """
         black = gtk.gdk.Color(0, 0, 0)
+        fgColor = gtk.gdk.Color('#eee')
+        windowBg = gtk.gdk.Color('#444')
 
         # Common to both windows
         icon_list = pympress.util.load_icons()
@@ -154,6 +156,7 @@ class UI:
         p_win.set_position(gtk.WIN_POS_CENTER)
         p_win.connect("delete-event", gtk.main_quit)
         p_win.set_icon_list(*icon_list)
+        p_win.modify_bg(gtk.STATE_NORMAL, windowBg)
 
         # Put Menu and Table in VBox
         bigvbox = gtk.VBox(False, 2)
@@ -213,24 +216,28 @@ class UI:
 
         # A little space around everything in the window
         align = gtk.Alignment(0.5, 0.5, 1, 1)
-        align.set_padding(20, 20, 20, 20)
+        align.set_padding(10, 10, 10, 10)
 
         # Table
-        table = gtk.Table(2, 10, False)
-        table.set_col_spacings(25)
-        table.set_row_spacings(25)
+        table = gtk.Table(14, 10, False)
+        table.set_col_spacings(5)
+        table.set_row_spacings(5)
         align.add(table)
         bigvbox.pack_end(align)
 
+        self.p_frame_cur.set_shadow_type(gtk.SHADOW_NONE)
+        table.attach(self.p_frame_cur, 0, 9, 0, 14)
+
         # "Current slide" frame
-        frame = gtk.Frame("Current slide")
-        table.attach(frame, 0, 6, 0, 1)
+        frame = gtk.Frame()#"Current slide")
+        frame.set_shadow_type(gtk.SHADOW_NONE)
+        table.attach(frame, 9, 10, 1, 2)
         align = gtk.Alignment(0.5, 0.5, 1, 1)
         align.set_padding(0, 0, 12, 0)
         frame.add(align)
         vbox = gtk.VBox()
         align.add(vbox)
-        vbox.pack_start(self.p_frame_cur)
+        #vbox.pack_start(self.p_frame_cur)
         self.eb_cur.set_visible_window(False)
         self.eb_cur.connect("event", self.on_label_event)
         vbox.pack_start(self.eb_cur, False, False, 10)
@@ -252,17 +259,20 @@ class UI:
         self.entry_cur.modify_font(pango.FontDescription('36'))
 
         # "Next slide" frame
-        frame = gtk.Frame("Next slide")
-        table.attach(frame, 6, 10, 0, 1)
+        frame = gtk.Frame()#"Next slide")
+        frame.set_shadow_type(gtk.SHADOW_NONE)
+        table.attach(frame, 9, 10, 2, 12)
         align = gtk.Alignment(0.5, 0.5, 1, 1)
         align.set_padding(0, 0, 12, 0)
         frame.add(align)
-        vbox = gtk.VBox()
+        vbox = gtk.VBox(True)
         align.add(vbox)
         vbox.pack_start(self.p_frame_next)
+        self.label_next.modify_fg(gtk.STATE_NORMAL, fgColor)
         self.label_next.set_justify(gtk.JUSTIFY_CENTER)
         self.label_next.set_use_markup(True)
-        vbox.pack_start(self.label_next, False, False, 10)
+        self.label_next.set_alignment(1, 0)
+        vbox.pack_start(self.label_next, True, True, 10)
         self.p_da_next.modify_bg(gtk.STATE_NORMAL, black)
         self.p_da_next.connect("expose-event", self.on_expose)
         self.p_da_next.set_name("p_da_next")
@@ -275,20 +285,26 @@ class UI:
 
         # "Time elapsed" frame
         frame = gtk.Frame("Time elapsed")
-        table.attach(frame, 0, 5, 1, 2, yoptions=gtk.FILL)
+        frame.set_shadow_type(gtk.SHADOW_NONE)
+        frame.get_label_widget().modify_fg(gtk.STATE_NORMAL, fgColor)
+        table.attach(frame, 9, 10, 0, 1)#, yoptions=gtk.FILL)
         align = gtk.Alignment(0.5, 0.5, 1, 1)
         align.set_padding(10, 10, 12, 0)
         frame.add(align)
+        self.label_time.modify_fg(gtk.STATE_NORMAL, fgColor)
         self.label_time.set_justify(gtk.JUSTIFY_CENTER)
         self.label_time.set_use_markup(True)
         align.add(self.label_time)
 
         # "Clock" frame
         frame = gtk.Frame("Clock")
-        table.attach(frame, 5, 10, 1, 2, yoptions=gtk.FILL)
+        frame.set_shadow_type(gtk.SHADOW_NONE)
+        frame.get_label_widget().modify_fg(gtk.STATE_NORMAL, fgColor)
+        table.attach(frame, 9, 10, 13, 14)#, yoptions=gtk.FILL)
         align = gtk.Alignment(0.5, 0.5, 1, 1)
         align.set_padding(10, 10, 12, 0)
         frame.add(align)
+        self.label_clock.modify_fg(gtk.STATE_NORMAL, fgColor)
         self.label_clock.set_justify(gtk.JUSTIFY_CENTER)
         self.label_clock.set_use_markup(True)
         align.add(self.label_clock)
@@ -325,6 +341,7 @@ class UI:
         # Show all windows
         self.c_win.show_all()
         p_win.show_all()
+        self.label_cur.hide()
 
 
     def run(self):
@@ -675,11 +692,11 @@ class UI:
     def update_page_numbers(self):
         """Update the displayed page numbers."""
 
-        text = "<span font='36'>%s</span>"
+        text = "<span font='24'>%s</span>"
 
         cur_nb = self.doc.current_page().number()
         cur = "%d/%d" % (cur_nb+1, self.doc.pages_number())
-        next = "--"
+        next = "Finished"
         if cur_nb+2 <= self.doc.pages_number():
             next = "%d/%d" % (cur_nb+2, self.doc.pages_number())
 
@@ -699,14 +716,14 @@ class UI:
         text = "<span font='36'>%s</span>"
 
         # Current time
-        clock = time.strftime("%H:%M:%S")
+        clock = time.strftime("%H:%M")
 
         # Time elapsed since the beginning of the presentation
         if not self.paused:
             self.delta = time.time() - self.start_time
         elapsed = "%02d:%02d" % (int(self.delta/60), int(self.delta%60))
         if self.paused:
-            elapsed += " (pause)"
+            elapsed += " (p)"
 
         self.label_time.set_markup(text % elapsed)
         self.label_clock.set_markup(text % clock)
