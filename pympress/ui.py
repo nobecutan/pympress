@@ -99,19 +99,25 @@ class UI:
 
     #: Blanked screen toggle.
     blanked = False
+    #: Whether to blank to a white or black screen
+    blank_to_white = False
 
     #: Current :class:`~pympress.document.Document` instance.
     doc = None
 
     #: Whether to use notes mode or not
     notes_mode = False
+    
+    #: Black color
+    color_black = gtk.gdk.Color(0, 0, 0)
+    #: White color
+    color_white = gtk.gdk.Color('#FFFFFF')
 
     def __init__(self, doc):
         """
         :param doc: the current document
         :type  doc: :class:`pympress.document.Document`
         """
-        black = gtk.gdk.Color(0, 0, 0)
 
         # Common to both windows
         icon_list = pympress.util.load_icons()
@@ -125,13 +131,14 @@ class UI:
         # Content window
         self.c_win.set_title("pympress content")
         self.c_win.set_default_size(800, 600)
-        self.c_win.modify_bg(gtk.STATE_NORMAL, black)
+        self.c_win.modify_bg(gtk.STATE_NORMAL, self.color_black)
         self.c_win.connect("delete-event", gtk.main_quit)
         self.c_win.set_icon_list(*icon_list)
 
-        self.c_frame.modify_bg(gtk.STATE_NORMAL, black)
+        self.c_frame.modify_bg(gtk.STATE_NORMAL, self.color_black)
+        self.c_frame.set_shadow_type(gtk.SHADOW_NONE)
 
-        self.c_da.modify_bg(gtk.STATE_NORMAL, black)
+        self.c_da.modify_bg(gtk.STATE_NORMAL, self.color_black)
         self.c_da.connect("expose-event", self.on_expose)
         self.c_da.set_name("c_da")
         if self.notes_mode:
@@ -174,6 +181,7 @@ class UI:
             <menuitem action="Fullscreen"/>
             <menuitem action="Notes mode"/>
             <menuitem action="Blank screen"/>
+            <menuitem action="Blank to white"/>
           </menu>
           <menu action="Help">
             <menuitem action="About"/>
@@ -202,6 +210,7 @@ class UI:
             ("Fullscreen",   None,           "_Fullscreen",  "f",  None, self.switch_fullscreen, False),
             ("Notes mode",   None,           "_Note mode",   "n",  None, self.switch_mode,       self.notes_mode),
             ("Blank screen", None,           "_Blank screen","b",  None, self.switch_blank,      False),
+            ("Blank to white", None,         "Blank to _white", "w", None, self.switch_blank_to_white, False),
         ])
         ui_manager.insert_action_group(action_group)
 
@@ -234,7 +243,7 @@ class UI:
         self.eb_cur.set_visible_window(False)
         self.eb_cur.connect("event", self.on_label_event)
         vbox.pack_start(self.eb_cur, False, False, 10)
-        self.p_da_cur.modify_bg(gtk.STATE_NORMAL, black)
+        self.p_da_cur.modify_bg(gtk.STATE_NORMAL, self.color_black)
         self.p_da_cur.connect("expose-event", self.on_expose)
         self.p_da_cur.set_name("p_da_cur")
         if self.notes_mode:
@@ -263,7 +272,7 @@ class UI:
         self.label_next.set_justify(gtk.JUSTIFY_CENTER)
         self.label_next.set_use_markup(True)
         vbox.pack_start(self.label_next, False, False, 10)
-        self.p_da_next.modify_bg(gtk.STATE_NORMAL, black)
+        self.p_da_next.modify_bg(gtk.STATE_NORMAL, self.color_black)
         self.p_da_next.connect("expose-event", self.on_expose)
         self.p_da_next.set_name("p_da_next")
         if self.notes_mode:
@@ -512,6 +521,8 @@ class UI:
                     self.switch_mode()
                 elif name.upper() == "B":
                     self.switch_blank()
+                elif name.upper() == "W":
+                    self.switch_blank_to_white()
 
         elif event.type == gtk.gdk.SCROLL:
             if not self.blanked:
@@ -818,9 +829,23 @@ class UI:
         if self.blanked:
             self.blanked = False
             self.c_da.show()
+            if not self.blank_to_white:
+                self.c_win.modify_bg(gtk.STATE_NORMAL, self.color_black)
         else:
             self.blanked = True
             self.c_da.hide()
+            if self.blank_to_white:
+                self.c_win.modify_bg(gtk.STATE_NORMAL, self.color_white)
+
+
+    def switch_blank_to_white(self, widget=None, event=None):
+        self.blank_to_white = not self.blank_to_white
+        if self.blank_to_white:
+            self.c_win.modify_bg(gtk.STATE_NORMAL, self.color_white)
+
+        else:
+            self.c_win.modify_bg(gtk.STATE_NORMAL, self.color_black)
+        self.on_page_change(False)
 
 
 ##
