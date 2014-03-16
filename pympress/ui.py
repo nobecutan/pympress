@@ -99,6 +99,11 @@ class UI:
 
     #: Current :class:`~pympress.document.Document` instance.
     doc = None
+    
+    #: Presenter foreground color
+    color_presenter_fg = gtk.gdk.Color('#eee')
+    #: Presenter window color
+    color_presenter_bg = gtk.gdk.Color('#444')
 
     #: Whether to use notes mode or not
     notes_mode = False
@@ -109,8 +114,6 @@ class UI:
         :type  doc: :class:`pympress.document.Document`
         """
         black = gtk.gdk.Color(0, 0, 0)
-        fgColor = gtk.gdk.Color('#eee')
-        windowBg = gtk.gdk.Color('#444')
 
         # Common to both windows
         icon_list = pympress.util.load_icons()
@@ -153,7 +156,7 @@ class UI:
         p_win.set_position(gtk.WIN_POS_CENTER)
         p_win.connect("delete-event", gtk.main_quit)
         p_win.set_icon_list(*icon_list)
-        p_win.modify_bg(gtk.STATE_NORMAL, windowBg)
+        p_win.modify_bg(gtk.STATE_NORMAL, self.color_presenter_bg)
 
         # Put Menu and Table in VBox
         bigvbox = gtk.VBox(False, 2)
@@ -263,7 +266,7 @@ class UI:
         vbox = gtk.VBox(True)
         align.add(vbox)
         vbox.pack_start(self.p_frame_next)
-        self.label_next.modify_fg(gtk.STATE_NORMAL, fgColor)
+        self.label_next.modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
         self.label_next.set_justify(gtk.JUSTIFY_CENTER)
         self.label_next.set_use_markup(True)
         self.label_next.set_alignment(1, 0)
@@ -281,12 +284,12 @@ class UI:
         # "Time elapsed" frame
         frame = gtk.Frame("Time elapsed")
         frame.set_shadow_type(gtk.SHADOW_NONE)
-        frame.get_label_widget().modify_fg(gtk.STATE_NORMAL, fgColor)
+        frame.get_label_widget().modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
         table.attach(frame, 9, 10, 0, 1)#, yoptions=gtk.FILL)
         align = gtk.Alignment(0.5, 0.5, 1, 1)
         align.set_padding(10, 10, 12, 0)
         frame.add(align)
-        self.label_time.modify_fg(gtk.STATE_NORMAL, fgColor)
+        self.label_time.modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
         self.label_time.set_justify(gtk.JUSTIFY_CENTER)
         self.label_time.set_use_markup(True)
         align.add(self.label_time)
@@ -294,12 +297,12 @@ class UI:
         # "Clock" frame
         frame = gtk.Frame("Clock")
         frame.set_shadow_type(gtk.SHADOW_NONE)
-        frame.get_label_widget().modify_fg(gtk.STATE_NORMAL, fgColor)
+        frame.get_label_widget().modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
         table.attach(frame, 9, 10, 13, 14)#, yoptions=gtk.FILL)
         align = gtk.Alignment(0.5, 0.5, 1, 1)
         align.set_padding(10, 10, 12, 0)
         frame.add(align)
-        self.label_clock.modify_fg(gtk.STATE_NORMAL, fgColor)
+        self.label_clock.modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
         self.label_clock.set_justify(gtk.JUSTIFY_CENTER)
         self.label_clock.set_use_markup(True)
         align.add(self.label_clock)
