@@ -517,7 +517,7 @@ class UI:
             elif name == 'End':
                 if not self.blanked:
                     self.doc.goto_end()
-            elif (name.upper() == "F11") \
+            elif (name.upper() in ["F5", "F11"]) \
                 or (name == "Return" and event.state & gtk.gdk.MOD1_MASK) \
                 or (name.upper() == "L" and event.state & gtk.gdk.CONTROL_MASK):
                 self.switch_fullscreen()
@@ -527,6 +527,8 @@ class UI:
                 self.switch_pause()
             elif name.upper() == "R":
                 self.reset_timer()
+            elif name == "period":
+                self.switch_blank()
 
             # Some key events are already handled by toggle actions in the
             # presenter window, so we must handle them in the content window
