@@ -161,7 +161,7 @@ class UI:
         # Presenter window
         p_win = gtk.Window(gtk.WINDOW_TOPLEVEL)
         p_win.set_title("pympress presenter")
-        p_win.set_default_size(800, 600)
+        p_win.set_default_size(1067, 600)
         p_win.set_position(gtk.WIN_POS_CENTER)
         p_win.connect("delete-event", gtk.main_quit)
         p_win.set_icon_list(*icon_list)
