@@ -84,11 +84,19 @@ class UI:
     label_time = gtk.Label()
     #: Clock :class:`~gtk.Label`.
     label_clock = gtk.Label()
+    #: Estimated talk time :class:`~gtk.Label` for the talk.
+    label_ett = gtk.Label()
+    #: :class:`~gtk.EventBox` associated with the estimated talk time.
+    eb_ett = gtk.EventBox()
+    #: :class:`~gtk.Entry` used to set the estimated talk time.
+    entry_ett = gtk.Entry()
 
     #: Time at which the counter was started.
     start_time = 0
     #: Time elapsed since the beginning of the presentation.
     delta = 0
+    #: Estimated talk time.
+    estTime = 0
     #: Timer paused status.
     paused = True
 
@@ -273,6 +281,17 @@ class UI:
         self.label_clock.modify_font(self.lFont)
         self.label_clock.set_alignment(0, 0)
 
+        # Estimated talk time frame
+        self.label_ett.set_text("00:00")
+        self.label_ett.modify_font(self.lFont)
+        self.label_ett.modify_font(self.lFont)
+        self.label_ett.modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
+        self.label_ett.set_alignment(1, 0)
+        self.eb_ett.set_visible_window(False)
+        self.eb_ett.connect("event", self.on_label_ett_event)
+        self.eb_ett.add(self.label_ett)
+        self.entry_ett.set_alignment(1)
+        self.entry_ett.modify_font(self.lFont)
 
         # A little space around everything in the window
         align = gtk.Alignment(0.5, 0.5, 1, 1)
@@ -309,6 +328,13 @@ class UI:
         sidebar.pack_start(frame, False)
 
         sidebar.pack_start(self.p_frame_next, True, True, 10)
+
+        # "Estimated Talk Time" frame
+        frame = gtk.Frame("Estimated Time")
+        frame.set_shadow_type(gtk.SHADOW_NONE)
+        frame.get_label_widget().modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
+        sidebar.pack_start(frame, False)
+        sidebar.pack_start(self.eb_ett, False, True, 10)
 
         # "Time Elapsed" frame
         frame = gtk.Frame("Time Elapsed")
@@ -674,6 +700,67 @@ class UI:
 
 
 
+    def on_label_ett_event(self, widget, event):
+        """
+        Manage events on the current slide label/entry.
+
+        This function replaces the label with an entry when clicked, replaces
+        the entry with a label when needed, etc. The nasty stuff it does is an
+        ancient kind of dark magic that should be avoided as much as possible...
+
+        :param widget: the widget in which the event occured
+        :type  widget: :class:`gtk.Widget`
+        :param event: the event that occured
+        :type  event: :class:`gtk.gdk.Event`
+        """
+
+        widget = self.eb_ett.get_child()
+
+        # Click on the label
+        if widget is self.label_ett and event.type == gtk.gdk.BUTTON_PRESS:
+            # Set entry text
+            self.entry_ett.set_text("%02d:%02d" % (int(self.estTime / 60), int(self.estTime % 60)))
+            self.entry_ett.select_region(0, -1)
+
+            # Replace label with entry
+            self.eb_ett.remove(self.label_ett)
+            self.eb_ett.add(self.entry_ett)
+            self.entry_ett.show()
+            self.entry_ett.grab_focus()
+
+        # Key pressed in the entry
+        elif widget is self.entry_ett and event.type == gtk.gdk.KEY_RELEASE:
+            name = gtk.gdk.keyval_name(event.keyval)
+
+            # Return key --> restore label and goto page
+            if name == "Return" or name == "KP_Return":
+                text = self.entry_ett.get_text()
+                self.restore_current_label_ett()
+
+                try:
+                    t = text.split(':')
+                    m = int(t[0])
+                    s = 0
+                    if len(t) > 1:
+                        s = int(t[1])
+
+                except ValueError:
+                    print "Invalid time (mm:ss expected): %s" % text
+                    return False
+
+                self.estTime = m*60 + s;
+                self.label_ett.set_text("%02d:%02d" % (int(self.estTime / 60), int(self.estTime % 60)))
+                self.label_time.modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
+
+            # Escape key --> just restore the label
+            elif name == "Escape":
+                self.restore_current_label_ett()
+
+        # Propagate the event further
+        return False
+
+
+
     def render_page(self, page, widget, wtype):
         """
         Render a page on a widget.
@@ -719,6 +806,17 @@ class UI:
             self.eb_cur.add(self.label_cur)
 
 
+    def restore_current_label_ett(self):
+        """
+        Make sure that the current page number is displayed in a label and not
+        in an entry. If it is an entry, then replace it with the label.
+        """
+        child = self.eb_ett.get_child()
+        if child is not self.label_ett:
+            self.eb_ett.remove(child)
+            self.eb_ett.add(self.label_ett)
+
+
     def update_page_numbers(self):
         """Update the displayed page numbers."""
 
@@ -749,6 +847,32 @@ class UI:
 
         self.label_time.set_text(elapsed)
         self.label_clock.set_text(clock)
+
+        # Update color
+        if self.estTime <> 0:
+            color = self.color_presenter_fg
+
+            offset = self.estTime - self.delta
+            if offset <= 300: # less than 5 minutes left
+                if offset >= 0:
+                    r = int(65535 - (133 * (300 - offset)))
+                    g  = int(65535 - (47 * (300 - offset)))
+                    color = gtk.gdk.Color(r, g, r)
+                elif offset >= -150:
+                    r = int(25635 - (266 * offset))
+                    g = int(51435 - (94 * offset))
+                    b = int(25635 * (150 + offset) / 150)
+                    color = gtk.gdk.Color(r, g, b)
+                elif offset >= -300:
+                    r = 65535
+                    g = int(65535 * (300 + offset) / 150)
+                    b = 0
+                    color = gtk.gdk.Color(r, g, b)
+                else:
+                    color = gtk.gdk.Color("#ff0000")
+
+    	    self.label_time.modify_fg(gtk.STATE_NORMAL, color)
+        # End update color
 
         return True
 
