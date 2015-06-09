@@ -115,6 +115,9 @@ class UI:
     #: Presenter window color
     color_presenter_bg = gtk.gdk.Color('#444')
 
+    #The large font
+    lFont = pango.FontDescription('36')
+
     def __init__(self, doc):
         """
         :param doc: the current document
@@ -237,15 +240,14 @@ class UI:
         self.p_frame_cur.set_shadow_type(gtk.SHADOW_NONE)
 
         # "Current slide number" label and entry
-        self.label_cur.set_justify(gtk.JUSTIFY_RIGHT)
-        self.label_cur.set_use_markup(True)
+        self.label_cur.modify_font(self.lFont)
         self.label_cur.modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
         self.label_cur.set_alignment(1, 0)
         self.eb_cur.set_visible_window(False)
         self.eb_cur.connect("event", self.on_label_event)
         self.eb_cur.add(self.label_cur)
         self.entry_cur.set_alignment(1)
-        self.entry_cur.modify_font(pango.FontDescription('36'))
+        self.entry_cur.modify_font(self.lFont)
 
         # "Next slide" frame
         self.p_da_next.modify_bg(gtk.STATE_NORMAL, self.color_black)
@@ -263,16 +265,14 @@ class UI:
 
         # "Time elapsed" frame
         self.label_time.modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
-        self.label_time.set_justify(gtk.JUSTIFY_CENTER)
-        self.label_time.set_use_markup(True)
+        self.label_time.modify_font(self.lFont)
         self.label_time.set_alignment(1, 0)
 
         # "Clock" frame
         self.label_clock.modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
-        self.label_clock.set_justify(gtk.JUSTIFY_CENTER)
-        self.label_clock.set_use_markup(True)
         self.label_clock.set_alignment(1, 0)
 
+        self.label_clock.modify_font(self.lFont)
 
         # A little space around everything in the window
         align = gtk.Alignment(0.5, 0.5, 1, 1)
@@ -721,12 +721,10 @@ class UI:
     def update_page_numbers(self):
         """Update the displayed page numbers."""
 
-        text = "<span font='36'>%s</span>"
-
         cur_nb = self.doc.current_page().number()
         cur = "%d/%d" % (cur_nb+1, self.doc.pages_number())
 
-        self.label_cur.set_markup(text % cur)
+        self.label_cur.set_text(cur)
         self.restore_current_label()
 
 
@@ -738,8 +736,6 @@ class UI:
         :rtype: boolean
         """
 
-        text = "<span font='36'>%s</span>"
-
         # Current time
         clock = time.strftime("%H:%M")
 
@@ -750,8 +746,8 @@ class UI:
         if self.paused:
             elapsed += " (p)"
 
-        self.label_time.set_markup(text % elapsed)
-        self.label_clock.set_markup(text % clock)
+        self.label_time.set_text(elapsed)
+        self.label_clock.set_text(clock)
 
         return True
 
