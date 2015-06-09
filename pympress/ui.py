@@ -270,9 +270,9 @@ class UI:
 
         # "Clock" frame
         self.label_clock.modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
-        self.label_clock.set_alignment(1, 0)
-
         self.label_clock.modify_font(self.lFont)
+        self.label_clock.set_alignment(0, 0)
+
 
         # A little space around everything in the window
         align = gtk.Alignment(0.5, 0.5, 1, 1)
@@ -285,12 +285,13 @@ class UI:
         bigvbox.pack_end(align)
 
 
-        align = gtk.Alignment(0, 0, 1, 1)
-        align.add(self.p_frame_cur)
-        bighbox.pack_start(align)
+        # Add current slide frame
+        mainbar = gtk.VBox(False, 2)
+        bighbox.pack_start(mainbar)
+        mainbar.pack_start(self.p_frame_cur)
         bighbox.pack_start(gtk.VSeparator(), False)
 
-        sidebar = gtk.VBox(False, 5)
+        sidebar = gtk.VBox(False, 2)
         bighbox.pack_start(sidebar, False)
 
 
@@ -320,8 +321,8 @@ class UI:
         frame = gtk.Frame("Clock")
         frame.set_shadow_type(gtk.SHADOW_NONE)
         frame.get_label_widget().modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
-        sidebar.pack_start(frame, False)
-        sidebar.pack_start(self.label_clock, False, True, 15)
+        mainbar.pack_end(self.label_clock, False, True, 10)
+        mainbar.pack_end(frame, False)
 
         p_win.connect("destroy", gtk.main_quit)
 
