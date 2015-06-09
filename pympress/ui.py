@@ -1,6 +1,7 @@
 #       ui.py
 #
 #       Copyright 2010 Thomas Jost <thomas.jost@gmail.com>
+#       Copyright 2015 Christof Rath <christof.rath@gmail.com>
 #
 #       This program is free software; you can redistribute it and/or modify
 #       it under the terms of the GNU General Public License as published by
@@ -400,7 +401,7 @@ class UI:
         about = gtk.AboutDialog()
         about.set_program_name("pympress")
         about.set_version(pympress.__version__)
-        about.set_copyright("(c) 2009, 2010 Thomas Jost")
+        about.set_copyright("(c) 2009, 2010 Thomas Jost\n(c) 2015 Christof Rath")
         about.set_comments("pympress is a little PDF reader written in Python using Poppler for PDF rendering and GTK for the GUI.")
         about.set_website("http://www.pympress.org/")
         try:
