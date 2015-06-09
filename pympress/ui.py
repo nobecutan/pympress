@@ -1,6 +1,7 @@
 #       ui.py
 #
 #       Copyright 2010 Thomas Jost <thomas.jost@gmail.com>
+#       Copyright 2015 Christof Rath <christof.rath@gmail.com>
 #
 #       This program is free software; you can redistribute it and/or modify
 #       it under the terms of the GNU General Public License as published by
@@ -65,7 +66,7 @@ class UI:
     c_da = gtk.DrawingArea()
 
     #: :class:`~gtk.AspectFrame` for the current slide in the Presenter window.
-    p_frame_cur = gtk.AspectFrame(yalign=1, ratio=4./3., obey_child=False)
+    p_frame_cur = gtk.AspectFrame(xalign=0, yalign=0, ratio=4./3., obey_child=False)
     #: :class:`~gtk.DrawingArea` for the current slide in the Presenter window.
     p_da_cur = gtk.DrawingArea()
     #: Slide counter :class:`~gtk.Label` for the current slide.
@@ -76,26 +77,37 @@ class UI:
     entry_cur = gtk.Entry()
 
     #: :class:`~gtk.AspectFrame` for the next slide in the Presenter window.
-    p_frame_next = gtk.AspectFrame(yalign=1, ratio=4./3., obey_child=False)
+    p_frame_next = gtk.AspectFrame(xalign=1, yalign=0, ratio=4./3., obey_child=False)
     #: :class:`~gtk.DrawingArea` for the next slide in the Presenter window.
     p_da_next = gtk.DrawingArea()
-    #: Slide counter :class:`~gtk.Label` for the next slide.
-    label_next = gtk.Label()
 
     #: Elapsed time :class:`~gtk.Label`.
     label_time = gtk.Label()
     #: Clock :class:`~gtk.Label`.
     label_clock = gtk.Label()
+    #: Estimated talk time :class:`~gtk.Label` for the talk.
+    label_ett = gtk.Label()
+    #: :class:`~gtk.EventBox` associated with the estimated talk time.
+    eb_ett = gtk.EventBox()
+    #: :class:`~gtk.Entry` used to set the estimated talk time.
+    entry_ett = gtk.Entry()
 
     #: Time at which the counter was started.
     start_time = 0
     #: Time elapsed since the beginning of the presentation.
     delta = 0
+    #: Estimated talk time.
+    estTime = 0
     #: Timer paused status.
     paused = True
 
     #: Fullscreen toggle. By default, don't start in fullscreen mode.
     fullscreen = False
+
+    #: Blanked screen toggle.
+    blanked = False
+    #: Whether to blank to a white or black screen
+    blank_to_white = False
 
     #: Current :class:`~pympress.document.Document` instance.
     doc = None
@@ -103,12 +115,23 @@ class UI:
     #: Whether to use notes mode or not
     notes_mode = False
 
+    #: Black color
+    color_black = gtk.gdk.Color(0, 0, 0)
+    #: White color
+    color_white = gtk.gdk.Color('#FFFFFF')
+    #: Presenter foreground color
+    color_presenter_fg = gtk.gdk.Color('#eee')
+    #: Presenter window color
+    color_presenter_bg = gtk.gdk.Color('#444')
+
+    #The large font
+    lFont = pango.FontDescription('36')
+
     def __init__(self, doc):
         """
         :param doc: the current document
         :type  doc: :class:`pympress.document.Document`
         """
-        black = gtk.gdk.Color(0, 0, 0)
 
         # Common to both windows
         icon_list = pympress.util.load_icons()
@@ -122,13 +145,14 @@ class UI:
         # Content window
         self.c_win.set_title("pympress content")
         self.c_win.set_default_size(800, 600)
-        self.c_win.modify_bg(gtk.STATE_NORMAL, black)
+        self.c_win.modify_bg(gtk.STATE_NORMAL, self.color_black)
         self.c_win.connect("delete-event", gtk.main_quit)
         self.c_win.set_icon_list(*icon_list)
 
-        self.c_frame.modify_bg(gtk.STATE_NORMAL, black)
+        self.c_frame.modify_bg(gtk.STATE_NORMAL, self.color_black)
+        self.c_frame.set_shadow_type(gtk.SHADOW_NONE)
 
-        self.c_da.modify_bg(gtk.STATE_NORMAL, black)
+        self.c_da.modify_bg(gtk.STATE_NORMAL, self.color_black)
         self.c_da.connect("expose-event", self.on_expose)
         self.c_da.set_name("c_da")
         if self.notes_mode:
@@ -140,17 +164,17 @@ class UI:
         self.c_frame.add(self.c_da)
         self.c_win.add(self.c_frame)
 
-        self.c_win.add_events(gtk.gdk.KEY_PRESS_MASK | gtk.gdk.SCROLL_MASK)
+        self.c_win.add_events(gtk.gdk.KEY_PRESS_MASK)
         self.c_win.connect("key-press-event", self.on_navigation)
-        self.c_win.connect("scroll-event", self.on_navigation)
 
         # Presenter window
         p_win = gtk.Window(gtk.WINDOW_TOPLEVEL)
         p_win.set_title("pympress presenter")
-        p_win.set_default_size(800, 600)
+        p_win.set_default_size(1067, 600)
         p_win.set_position(gtk.WIN_POS_CENTER)
         p_win.connect("delete-event", gtk.main_quit)
         p_win.set_icon_list(*icon_list)
+        p_win.modify_bg(gtk.STATE_NORMAL, self.color_presenter_bg)
 
         # Put Menu and Table in VBox
         bigvbox = gtk.VBox(False, 2)
@@ -170,6 +194,8 @@ class UI:
             <menuitem action="Reset timer"/>
             <menuitem action="Fullscreen"/>
             <menuitem action="Notes mode"/>
+            <menuitem action="Blank screen"/>
+            <menuitem action="Blank to white"/>
           </menu>
           <menu action="Help">
             <menuitem action="About"/>
@@ -197,6 +223,8 @@ class UI:
             ("Pause timer",  None,           "_Pause timer", "p",  None, self.switch_pause,      True),
             ("Fullscreen",   None,           "_Fullscreen",  "f",  None, self.switch_fullscreen, False),
             ("Notes mode",   None,           "_Note mode",   "n",  None, self.switch_mode,       self.notes_mode),
+            ("Blank screen", None,           "_Blank screen","b",  None, self.switch_blank,      False),
+            ("Blank to white", None,         "Blank to _white", "w", None, self.switch_blank_to_white, False),
         ])
         ui_manager.insert_action_group(action_group)
 
@@ -206,30 +234,10 @@ class UI:
         h.set_right_justified(True)
         bigvbox.pack_start(menubar, False)
 
-        # A little space around everything in the window
-        align = gtk.Alignment(0.5, 0.5, 1, 1)
-        align.set_padding(20, 20, 20, 20)
 
-        # Table
-        table = gtk.Table(2, 10, False)
-        table.set_col_spacings(25)
-        table.set_row_spacings(25)
-        align.add(table)
-        bigvbox.pack_end(align)
 
-        # "Current slide" frame
-        frame = gtk.Frame("Current slide")
-        table.attach(frame, 0, 6, 0, 1)
-        align = gtk.Alignment(0.5, 0.5, 1, 1)
-        align.set_padding(0, 0, 12, 0)
-        frame.add(align)
-        vbox = gtk.VBox()
-        align.add(vbox)
-        vbox.pack_start(self.p_frame_cur)
-        self.eb_cur.set_visible_window(False)
-        self.eb_cur.connect("event", self.on_label_event)
-        vbox.pack_start(self.eb_cur, False, False, 10)
-        self.p_da_cur.modify_bg(gtk.STATE_NORMAL, black)
+        # The current slide configuration
+        self.p_da_cur.modify_bg(gtk.STATE_NORMAL, self.color_black)
         self.p_da_cur.connect("expose-event", self.on_expose)
         self.p_da_cur.set_name("p_da_cur")
         if self.notes_mode:
@@ -238,27 +246,20 @@ class UI:
             self.cache.add_widget("p_da_cur", PDF_REGULAR)
         self.p_da_cur.connect("configure-event", self.on_configure)
         self.p_frame_cur.add(self.p_da_cur)
+        self.p_frame_cur.set_shadow_type(gtk.SHADOW_NONE)
 
-        # "Current slide" label and entry
-        self.label_cur.set_justify(gtk.JUSTIFY_CENTER)
-        self.label_cur.set_use_markup(True)
+        # "Current slide number" label and entry
+        self.label_cur.modify_font(self.lFont)
+        self.label_cur.modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
+        self.label_cur.set_alignment(1, 0)
+        self.eb_cur.set_visible_window(False)
+        self.eb_cur.connect("event", self.on_label_event)
         self.eb_cur.add(self.label_cur)
-        self.entry_cur.set_alignment(0.5)
-        self.entry_cur.modify_font(pango.FontDescription('36'))
+        self.entry_cur.set_alignment(1)
+        self.entry_cur.modify_font(self.lFont)
 
         # "Next slide" frame
-        frame = gtk.Frame("Next slide")
-        table.attach(frame, 6, 10, 0, 1)
-        align = gtk.Alignment(0.5, 0.5, 1, 1)
-        align.set_padding(0, 0, 12, 0)
-        frame.add(align)
-        vbox = gtk.VBox()
-        align.add(vbox)
-        vbox.pack_start(self.p_frame_next)
-        self.label_next.set_justify(gtk.JUSTIFY_CENTER)
-        self.label_next.set_use_markup(True)
-        vbox.pack_start(self.label_next, False, False, 10)
-        self.p_da_next.modify_bg(gtk.STATE_NORMAL, black)
+        self.p_da_next.modify_bg(gtk.STATE_NORMAL, self.color_black)
         self.p_da_next.connect("expose-event", self.on_expose)
         self.p_da_next.set_name("p_da_next")
         if self.notes_mode:
@@ -266,36 +267,99 @@ class UI:
         else :
             self.cache.add_widget("p_da_next", PDF_REGULAR)
         self.p_da_next.connect("configure-event", self.on_configure)
+        self.p_frame_next.set_shadow_type(gtk.SHADOW_NONE)
+        self.p_frame_next.set_size_request(450, -1)
         self.p_frame_next.add(self.p_da_next)
 
+
         # "Time elapsed" frame
-        frame = gtk.Frame("Time elapsed")
-        table.attach(frame, 0, 5, 1, 2, yoptions=gtk.FILL)
-        align = gtk.Alignment(0.5, 0.5, 1, 1)
-        align.set_padding(10, 10, 12, 0)
-        frame.add(align)
-        self.label_time.set_justify(gtk.JUSTIFY_CENTER)
-        self.label_time.set_use_markup(True)
-        align.add(self.label_time)
+        self.label_time.modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
+        self.label_time.modify_font(self.lFont)
+        self.label_time.set_alignment(1, 0)
 
         # "Clock" frame
-        frame = gtk.Frame("Clock")
-        table.attach(frame, 5, 10, 1, 2, yoptions=gtk.FILL)
+        self.label_clock.modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
+        self.label_clock.modify_font(self.lFont)
+        self.label_clock.set_alignment(0, 0)
+
+        # Estimated talk time frame
+        self.label_ett.set_text("00:00")
+        self.label_ett.modify_font(self.lFont)
+        self.label_ett.modify_font(self.lFont)
+        self.label_ett.modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
+        self.label_ett.set_alignment(1, 0)
+        self.eb_ett.set_visible_window(False)
+        self.eb_ett.connect("event", self.on_label_ett_event)
+        self.eb_ett.add(self.label_ett)
+        self.entry_ett.set_alignment(1)
+        self.entry_ett.modify_font(self.lFont)
+
+        # A little space around everything in the window
         align = gtk.Alignment(0.5, 0.5, 1, 1)
-        align.set_padding(10, 10, 12, 0)
-        frame.add(align)
-        self.label_clock.set_justify(gtk.JUSTIFY_CENTER)
-        self.label_clock.set_use_markup(True)
-        align.add(self.label_clock)
+        align.set_padding(5, 5, 5, 5)
+
+        #Big HBox
+        bighbox = gtk.HBox(False, 5)
+        align.add(bighbox)
+
+        bigvbox.pack_end(align)
+
+
+        # Add current slide frame
+        mainbar = gtk.VBox(False, 2)
+        bighbox.pack_start(mainbar)
+        mainbar.pack_start(self.p_frame_cur)
+        bighbox.pack_start(gtk.VSeparator(), False)
+
+        sidebar = gtk.VBox(False, 2)
+        bighbox.pack_start(sidebar, False)
+
+
+        # "Current Slide Number" frame
+        frame = gtk.Frame("Current Slide Number")
+        frame.set_shadow_type(gtk.SHADOW_NONE)
+        frame.get_label_widget().modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
+        sidebar.pack_start(frame, False)
+        sidebar.pack_start(self.eb_cur, False, True, 10)
+
+        # "Next Slide" frame
+        frame = gtk.Frame("Next Slide")
+        frame.set_shadow_type(gtk.SHADOW_NONE)
+        frame.get_label_widget().modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
+        sidebar.pack_start(frame, False)
+
+        sidebar.pack_start(self.p_frame_next, True, True, 10)
+
+        # "Estimated Talk Time" frame
+        frame = gtk.Frame("Estimated Time")
+        frame.set_shadow_type(gtk.SHADOW_NONE)
+        frame.get_label_widget().modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
+        sidebar.pack_start(frame, False)
+        sidebar.pack_start(self.eb_ett, False, True, 10)
+
+        # "Time Elapsed" frame
+        frame = gtk.Frame("Time Elapsed")
+        frame.set_shadow_type(gtk.SHADOW_NONE)
+        frame.get_label_widget().modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
+        sidebar.pack_start(frame, False)
+        sidebar.pack_start(self.label_time, False, True, 10)
+
+        # Clock frame
+        frame = gtk.Frame("Clock")
+        frame.set_shadow_type(gtk.SHADOW_NONE)
+        frame.get_label_widget().modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
+        mainbar.pack_end(self.label_clock, False, True, 10)
+        mainbar.pack_end(frame, False)
 
         p_win.connect("destroy", gtk.main_quit)
-        p_win.show_all()
 
 
         # Add events
-        p_win.add_events(gtk.gdk.KEY_PRESS_MASK | gtk.gdk.SCROLL_MASK)
+        p_win.add_events(gtk.gdk.KEY_PRESS_MASK)
+#        p_win.add_events(gtk.gdk.KEY_PRESS_MASK | gtk.gdk.SCROLL_MASK)
         p_win.connect("key-press-event", self.on_navigation)
-        p_win.connect("scroll-event", self.on_navigation)
+#        p_win.connect("scroll-event", self.on_navigation)
+        p_win.connect("configure-event", self.on_resize)
 
         # Hyperlinks if available
         if pympress.util.poppler_links_available():
@@ -322,6 +386,10 @@ class UI:
         p_win.show_all()
 
 
+
+
+
+
     def run(self):
         """Run the GTK main loop."""
         with gtk.gdk.lock:
@@ -333,7 +401,7 @@ class UI:
         about = gtk.AboutDialog()
         about.set_program_name("pympress")
         about.set_version(pympress.__version__)
-        about.set_copyright("(c) 2009, 2010 Thomas Jost")
+        about.set_copyright("(c) 2009, 2010 Thomas Jost\n(c) 2015 Christof Rath")
         about.set_comments("pympress is a little PDF reader written in Python using Poppler for PDF rendering and GTK for the GUI.")
         about.set_website("http://www.pympress.org/")
         try:
@@ -459,6 +527,13 @@ class UI:
         self.cache.resize_widget(widget.get_name(), event.width, event.height)
 
 
+    def on_resize(self, widget, event):
+        """
+        Resize the sidebox to 1/3 of the window width on resize
+        """
+        self.p_frame_next.set_size_request(int(event.width*0.33), -1)
+
+
     def on_navigation(self, widget, event):
         """
         Manage events as mouse scroll or clicks for both windows.
@@ -468,18 +543,23 @@ class UI:
         :param event: the event that occured
         :type  event: :class:`gtk.gdk.Event`
         """
+
         if event.type == gtk.gdk.KEY_PRESS:
             name = gtk.gdk.keyval_name(event.keyval)
 
             if name in ["Right", "Down", "Page_Down", "space"]:
-                self.doc.goto_next()
+                if not self.blanked:
+                    self.doc.goto_next()
             elif name in ["Left", "Up", "Page_Up", "BackSpace"]:
-                self.doc.goto_prev()
+                if not self.blanked:
+                    self.doc.goto_prev()
             elif name == 'Home':
-                self.doc.goto_home()
+                if not self.blanked:
+                    self.doc.goto_home()
             elif name == 'End':
-                self.doc.goto_end()
-            elif (name.upper() in ["F", "F11"]) \
+                if not self.blanked:
+                    self.doc.goto_end()
+            elif (name.upper() in ["F5", "F11"]) \
                 or (name == "Return" and event.state & gtk.gdk.MOD1_MASK) \
                 or (name.upper() == "L" and event.state & gtk.gdk.CONTROL_MASK):
                 self.switch_fullscreen()
@@ -489,6 +569,8 @@ class UI:
                 self.switch_pause()
             elif name.upper() == "R":
                 self.reset_timer()
+            elif name == "period":
+                self.switch_blank()
 
             # Some key events are already handled by toggle actions in the
             # presenter window, so we must handle them in the content window
@@ -496,14 +578,21 @@ class UI:
             elif widget is self.c_win:
                 if name.upper() == "P":
                     self.switch_pause()
+                elif name.upper() == "F":
+                    self.switch_fullscreen()
                 elif name.upper() == "N":
                     self.switch_mode()
+                elif name.upper() == "B":
+                    self.switch_blank()
+                elif name.upper() == "W":
+                    self.switch_blank_to_white()
 
         elif event.type == gtk.gdk.SCROLL:
-            if event.direction in [gtk.gdk.SCROLL_RIGHT, gtk.gdk.SCROLL_DOWN]:
-                self.doc.goto_next()
-            else:
-                self.doc.goto_prev()
+            if not self.blanked:
+                if event.direction in [gtk.gdk.SCROLL_RIGHT, gtk.gdk.SCROLL_DOWN]:
+                    self.doc.goto_next()
+                else:
+                    self.doc.goto_prev()
 
         else:
             print "Unknown event %s" % event.type
@@ -612,6 +701,67 @@ class UI:
 
 
 
+    def on_label_ett_event(self, widget, event):
+        """
+        Manage events on the current slide label/entry.
+
+        This function replaces the label with an entry when clicked, replaces
+        the entry with a label when needed, etc. The nasty stuff it does is an
+        ancient kind of dark magic that should be avoided as much as possible...
+
+        :param widget: the widget in which the event occured
+        :type  widget: :class:`gtk.Widget`
+        :param event: the event that occured
+        :type  event: :class:`gtk.gdk.Event`
+        """
+
+        widget = self.eb_ett.get_child()
+
+        # Click on the label
+        if widget is self.label_ett and event.type == gtk.gdk.BUTTON_PRESS:
+            # Set entry text
+            self.entry_ett.set_text("%02d:%02d" % (int(self.estTime / 60), int(self.estTime % 60)))
+            self.entry_ett.select_region(0, -1)
+
+            # Replace label with entry
+            self.eb_ett.remove(self.label_ett)
+            self.eb_ett.add(self.entry_ett)
+            self.entry_ett.show()
+            self.entry_ett.grab_focus()
+
+        # Key pressed in the entry
+        elif widget is self.entry_ett and event.type == gtk.gdk.KEY_RELEASE:
+            name = gtk.gdk.keyval_name(event.keyval)
+
+            # Return key --> restore label and goto page
+            if name == "Return" or name == "KP_Return":
+                text = self.entry_ett.get_text()
+                self.restore_current_label_ett()
+
+                try:
+                    t = text.split(':')
+                    m = int(t[0])
+                    s = 0
+                    if len(t) > 1:
+                        s = int(t[1])
+
+                except ValueError:
+                    print "Invalid time (mm:ss expected): %s" % text
+                    return False
+
+                self.estTime = m*60 + s;
+                self.label_ett.set_text("%02d:%02d" % (int(self.estTime / 60), int(self.estTime % 60)))
+                self.label_time.modify_fg(gtk.STATE_NORMAL, self.color_presenter_fg)
+
+            # Escape key --> just restore the label
+            elif name == "Escape":
+                self.restore_current_label_ett()
+
+        # Propagate the event further
+        return False
+
+
+
     def render_page(self, page, widget, wtype):
         """
         Render a page on a widget.
@@ -657,19 +807,24 @@ class UI:
             self.eb_cur.add(self.label_cur)
 
 
+    def restore_current_label_ett(self):
+        """
+        Make sure that the current page number is displayed in a label and not
+        in an entry. If it is an entry, then replace it with the label.
+        """
+        child = self.eb_ett.get_child()
+        if child is not self.label_ett:
+            self.eb_ett.remove(child)
+            self.eb_ett.add(self.label_ett)
+
+
     def update_page_numbers(self):
         """Update the displayed page numbers."""
 
-        text = "<span font='36'>%s</span>"
-
         cur_nb = self.doc.current_page().number()
         cur = "%d/%d" % (cur_nb+1, self.doc.pages_number())
-        next = "--"
-        if cur_nb+2 <= self.doc.pages_number():
-            next = "%d/%d" % (cur_nb+2, self.doc.pages_number())
 
-        self.label_cur.set_markup(text % cur)
-        self.label_next.set_markup(text % next)
+        self.label_cur.set_text(cur)
         self.restore_current_label()
 
 
@@ -681,20 +836,44 @@ class UI:
         :rtype: boolean
         """
 
-        text = "<span font='36'>%s</span>"
-
         # Current time
-        clock = time.strftime("%H:%M:%S")
+        clock = time.strftime("%H:%M")
 
         # Time elapsed since the beginning of the presentation
         if not self.paused:
             self.delta = time.time() - self.start_time
         elapsed = "%02d:%02d" % (int(self.delta/60), int(self.delta%60))
         if self.paused:
-            elapsed += " (pause)"
+            elapsed += " (p)"
 
-        self.label_time.set_markup(text % elapsed)
-        self.label_clock.set_markup(text % clock)
+        self.label_time.set_text(elapsed)
+        self.label_clock.set_text(clock)
+
+        # Update color
+        if self.estTime <> 0:
+            color = self.color_presenter_fg
+
+            offset = self.estTime - self.delta
+            if offset <= 300: # less than 5 minutes left
+                if offset >= 0:
+                    r = int(65535 - (133 * (300 - offset)))
+                    g  = int(65535 - (47 * (300 - offset)))
+                    color = gtk.gdk.Color(r, g, r)
+                elif offset >= -150:
+                    r = int(25635 - (266 * offset))
+                    g = int(51435 - (94 * offset))
+                    b = int(25635 * (150 + offset) / 150)
+                    color = gtk.gdk.Color(r, g, b)
+                elif offset >= -300:
+                    r = 65535
+                    g = int(65535 * (300 + offset) / 150)
+                    b = 0
+                    color = gtk.gdk.Color(r, g, b)
+                else:
+                    color = gtk.gdk.Color("#ff0000")
+
+    	    self.label_time.modify_fg(gtk.STATE_NORMAL, color)
+        # End update color
 
         return True
 
@@ -797,6 +976,28 @@ class UI:
             self.cache.set_widget_type("p_da_cur", PDF_NOTES_PAGE)
             self.cache.set_widget_type("p_da_next", PDF_CONTENT_PAGE)
 
+        self.on_page_change(False)
+
+    def switch_blank(self, widget=None, event=None):
+        if self.blanked:
+            self.blanked = False
+            self.c_da.show()
+            if not self.blank_to_white:
+                self.c_win.modify_bg(gtk.STATE_NORMAL, self.color_black)
+        else:
+            self.blanked = True
+            self.c_da.hide()
+            if self.blank_to_white:
+                self.c_win.modify_bg(gtk.STATE_NORMAL, self.color_white)
+
+
+    def switch_blank_to_white(self, widget=None, event=None):
+        self.blank_to_white = not self.blank_to_white
+        if self.blank_to_white:
+            self.c_win.modify_bg(gtk.STATE_NORMAL, self.color_white)
+
+        else:
+            self.c_win.modify_bg(gtk.STATE_NORMAL, self.color_black)
         self.on_page_change(False)
 
 

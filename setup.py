@@ -22,15 +22,15 @@
 from setuptools import setup
 import glob
 
-version="0.3"
+exec(open('pympress/version.py').read())
 
 setup(name="pympress",
-      version=version,
+      version=__version__,
       description="A simple dual-screen PDF reader designed for presentations",
-      author="Thomas Jost",
-      author_email="thomas.jost@gmail.com",
+      author="Thomas Jost, Christof Rath",
+      author_email="thomas.jost@gmail.com, christof.rath@gmail.com",
       url="http://www.pympress.org/",
-      download_url="http://github.com/Schnouki/pympress/downloads",
+      download_url="https://github.com/nobecutan/pympress/releases",
       classifiers=[
           'Development Status :: 4 - Beta',
           'Environment :: X11 Applications :: GTK',
