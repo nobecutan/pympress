@@ -41,6 +41,7 @@ pygtk.require('2.0')
 import gobject
 import gtk
 import pango
+import webbrowser
 
 import pympress.pixbufcache
 import pympress.util
@@ -626,7 +627,10 @@ class UI:
         if event.type == gtk.gdk.BUTTON_PRESS:
             if link is not None:
                 dest = link.get_destination()
-                self.doc.goto(dest)
+                if isinstance(dest, int):
+                    self.doc.goto(dest)
+                else:
+                    webbrowser.open_new_tab(dest)
 
         elif event.type == gtk.gdk.MOTION_NOTIFY:
             if link is not None:

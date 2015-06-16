@@ -148,6 +148,12 @@ class Page:
                     my_link = Link(link.area.x1, link.area.y1, link.area.x2, link.area.y2, page_num)
                     self.links.append(my_link)
 
+                if type(link.action) is poppler.ActionUri:
+                    dest = link.action.uri
+
+                    my_link = Link(link.area.x1, link.area.y1, link.area.x2, link.area.y2, dest)
+                    self.links.append(my_link)
+
     def number(self):
         """Get the page number"""
         return self.page_nb
